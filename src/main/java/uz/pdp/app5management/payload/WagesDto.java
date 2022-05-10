@@ -10,6 +10,6 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 public class WagesDto {
-    private UUID id;
+    private UUID userId;
     private double price;
 }

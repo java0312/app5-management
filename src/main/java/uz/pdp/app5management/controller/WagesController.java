@@ -37,6 +37,18 @@ public class WagesController {
         return ResponseEntity.ok(wagesService.getWagesByPrice(price));
     }
 
+    @PutMapping("/{id}")
+    public HttpEntity<?> editWages(@PathVariable UUID id, @RequestBody WagesDto wagesDto){
+        ApiResponse apiResponse = wagesService.editWages(id, wagesDto);
+        return ResponseEntity.status(apiResponse.isSuccess() ? 202 : 409).body(apiResponse);
+    }
+
+    @DeleteMapping("/{id}")
+    public HttpEntity<?> deleteWages(@PathVariable UUID id){
+        ApiResponse apiResponse = wagesService.deleteWages(id);
+        return ResponseEntity.status(apiResponse.isSuccess() ? 204 : 409).body(apiResponse);
+    }
+
 }
 
 

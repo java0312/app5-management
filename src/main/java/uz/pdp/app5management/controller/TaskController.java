@@ -4,10 +4,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import uz.pdp.app5management.entity.Task;
 import uz.pdp.app5management.payload.ApiResponse;
 import uz.pdp.app5management.payload.TaskDto;
 import uz.pdp.app5management.service.TaskService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -27,6 +29,39 @@ public class TaskController {
     public HttpEntity<?> taskDone(@RequestParam UUID id){
         ApiResponse apiResponse = taskService.taskDone(id);
         return ResponseEntity.status(apiResponse.isSuccess() ? 200 : 409).body(apiResponse);
+    }
+
+    @GetMapping("/{id}")
+    public HttpEntity<?> getTaskById(@PathVariable UUID id){
+        return ResponseEntity.ok(taskService.getTaskById(id));
+    }
+
+    @GetMapping
+    public HttpEntity<?> getAllTasks(){
+        return ResponseEntity.ok(taskService.getAllTasks());
+    }
+
+    @GetMapping("/notDoneOnTime")
+    public HttpEntity<?> getNotDoneOnTimeTasks(){
+        List<Task> tasks = taskService.getNotDoneOnTimeTasks();
+        return ResponseEntity.ok(tasks);
+    }
+
+    @GetMapping("/byUserId")
+    public HttpEntity<?> getTasksByWorker(){
+        return ResponseEntity.ok(taskService.getTasksByWorker());
+    }
+
+    @PutMapping("/{id}")
+    public HttpEntity<?> editTask(@PathVariable UUID id, @RequestBody TaskDto taskDto){
+        ApiResponse apiResponse = taskService.editTask(id, taskDto);
+        return ResponseEntity.status(apiResponse.isSuccess() ? 202 : 409).body(apiResponse);
+    }
+
+    @DeleteMapping("/{id}")
+    public HttpEntity<?> deleteTask(@PathVariable UUID id){
+        ApiResponse apiResponse = taskService.deleteTask(id);
+        return ResponseEntity.status(apiResponse.isSuccess() ? 202 : 409).body(apiResponse);
     }
 
 }

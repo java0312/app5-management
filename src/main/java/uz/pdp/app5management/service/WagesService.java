@@ -1,9 +1,12 @@
 package uz.pdp.app5management.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import uz.pdp.app5management.entity.Role;
 import uz.pdp.app5management.entity.User;
 import uz.pdp.app5management.entity.Wages;
+import uz.pdp.app5management.entity.enums.RoleName;
 import uz.pdp.app5management.payload.ApiResponse;
 import uz.pdp.app5management.payload.WagesDto;
 import uz.pdp.app5management.repository.UserRepository;
@@ -25,7 +28,7 @@ public class WagesService {
 
     public ApiResponse addWages(WagesDto wagesDto) {
 
-        Optional<User> optionalUser = userRepository.findById(wagesDto.getId());
+        Optional<User> optionalUser = userRepository.findById(wagesDto.getUserId());
         if (optionalUser.isEmpty())
             return new ApiResponse("User not found!", false);
 
@@ -43,6 +46,40 @@ public class WagesService {
 
     public List<Wages> getWagesByPrice(double price) {
         return wagesRepository.findAllByPrice(price);
+    }
+
+    public ApiResponse editWages(UUID id, WagesDto wagesDto) {
+        User principal = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Role role = (Role) principal.getRoles().toArray()[0];
+        if (role.getRoleName().equals(RoleName.DIRECTOR)) {
+            Optional<Wages> optionalWages = wagesRepository.findById(id);
+            if (optionalWages.isPresent()) {
+                Wages editingWages = optionalWages.get();
+                editingWages.setDate(new Date());
+                editingWages.setPrice(wagesDto.getPrice());
+
+                Optional<User> optionalUser = userRepository.findById(wagesDto.getUserId());
+                if (optionalUser.isPresent()) {
+                    User user = optionalUser.get();
+                    editingWages.setUser(user);
+                    wagesRepository.save(editingWages);
+                    return new ApiResponse("Wages edited!", true);
+                }
+            }
+        }
+        return new ApiResponse("Wages not edited!", false);
+    }
+
+    public ApiResponse deleteWages(UUID id) {
+        User principal = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Role role = (Role) principal.getRoles().toArray()[0];
+        if (role.getRoleName().equals(RoleName.DIRECTOR)) {
+            Optional<Wages> optionalWages = wagesRepository.findById(id);
+            if (optionalWages.isPresent()) {
+                wagesRepository.deleteById(id);
+            }
+        }
+        return new ApiResponse("Wages not deleted!", false);
     }
 }
 

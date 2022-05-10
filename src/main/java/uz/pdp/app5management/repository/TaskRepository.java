@@ -5,6 +5,7 @@ import org.springframework.stereotype.Repository;
 import uz.pdp.app5management.entity.Task;
 import uz.pdp.app5management.entity.User;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,5 +14,8 @@ import java.util.UUID;
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
     List<Task> findAllByToUser(User toUser);
+
+    List<Task> findAllByFromUser(User fromUser);
+
 
 }

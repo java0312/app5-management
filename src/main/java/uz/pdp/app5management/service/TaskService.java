@@ -1,6 +1,7 @@
 package uz.pdp.app5management.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +16,7 @@ import uz.pdp.app5management.repository.TaskRepository;
 import uz.pdp.app5management.repository.UserRepository;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -50,14 +52,14 @@ public class TaskService {
             Role toUserRole = (Role) toUser.getRoles().toArray()[0];
 
             /*
-            * Xodim vazifa biriktira olmaydi
-            * */
+             * Xodim vazifa biriktira olmaydi
+             * */
             if (fromUserRole.getRoleName().equals(RoleName.WORKER))
                 return new ApiResponse("You cannot give a task", false);
 
             /*
-            * manager managerga yoki directorga vazifa beraolmaydi
-            * */
+             * manager managerga yoki directorga vazifa beraolmaydi
+             * */
             if (fromUserRole.getRoleName().equals(RoleName.HR_MANAGER) &&
                     (toUserRole.getRoleName().equals(RoleName.DIRECTOR) || toUserRole.getRoleName().equals(RoleName.HR_MANAGER)))
                 return new ApiResponse("You cannot give a task", false);
@@ -100,7 +102,7 @@ public class TaskService {
     //task done
     public ApiResponse taskDone(UUID id) {
         Optional<Task> optionalTask = taskRepository.findById(id);
-        if (optionalTask.isPresent()){
+        if (optionalTask.isPresent()) {
             Task task = optionalTask.get();
 
             task.setFinishedDate(new Date());
@@ -112,7 +114,7 @@ public class TaskService {
         return new ApiResponse("Task not found!", false);
     }
 
-    public boolean sendEmailAboutDone(Task task){
+    public boolean sendEmailAboutDone(Task task) {
         try {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
             mailMessage.setFrom(task.getToUser().getEmail());
@@ -130,4 +132,84 @@ public class TaskService {
         }
     }
 
+    public Task getTaskById(UUID id) {
+        Optional<Task> optionalTask = taskRepository.findById(id);
+        if (optionalTask.isPresent()) {
+            User user = getUser();
+            Role role = (Role) user.getRoles().toArray()[0];
+            if (role.getRoleName().equals(RoleName.DIRECTOR) || role.getRoleName().equals(RoleName.HR_MANAGER)) {
+                return optionalTask.get();
+            }
+        }
+        return null;
+    }
+
+    private User getUser() {
+        return ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    }
+
+    public List<Task> getAllTasks() {
+        User user = getUser();
+        Role role = (Role) user.getRoles().toArray()[0];
+        if (role.getRoleName().equals(RoleName.DIRECTOR))
+            return taskRepository.findAll();
+        if (role.getRoleName().equals(RoleName.HR_MANAGER))
+            return taskRepository.findAllByFromUser(user);
+        return null;
+    }
+
+    public ApiResponse editTask(UUID id, TaskDto taskDto) {
+
+        User user = getUser();
+        Optional<Task> optionalTask = taskRepository.findById(id);
+        if (optionalTask.isPresent()){
+            Task editingTask = optionalTask.get();
+            if (user.getEmail().equals(editingTask.getFromUser().getEmail())){
+                editingTask.setName(taskDto.getName());
+                editingTask.setExpiredDate(taskDto.getExpireDate());
+                editingTask.setText(taskDto.getText());
+                taskRepository.save(editingTask);
+                return new ApiResponse("Task edited!", true);
+            }
+            return new ApiResponse("This task is not yours", false);
+        }
+        return new ApiResponse("Task not found!", false);
+
+    }
+
+    public ApiResponse deleteTask(UUID id) {
+
+        User user = getUser();
+        Optional<Task> optionalTask = taskRepository.findById(id);
+        if (optionalTask.isPresent()){
+            if (user.getEmail().equals(optionalTask.get().getFromUser().getEmail())){
+                taskRepository.deleteById(id);
+                return new ApiResponse("Task deleted!", true);
+            }
+            return new ApiResponse("This task is not yours", false);
+        }
+        return new ApiResponse("Task not found!", false);
+
+    }
+
+    public List<Task> getTasksByWorker() {
+        User user = getUser();
+        return taskRepository.findAllByToUser(user);
+    }
+
+    public List<Task> getNotDoneOnTimeTasks() {
+        User user = getUser();
+        Role role = (Role) user.getRoles().toArray()[0];
+        if (role.getRoleName().equals(RoleName.DIRECTOR) || role.getRoleName().equals(RoleName.HR_MANAGER)){
+            List<Task> all = taskRepository.findAll();
+            List<Task> tasks = null;
+            for (Task task : all) {
+                if (task.getExpiredDate().getTime() < task.getFinishedDate().getTime()){
+                    tasks.add(task);
+                }
+            }
+            return tasks;
+        }
+        return null;
+    }
 }

@@ -9,6 +9,7 @@ import uz.pdp.app5management.entity.Turnstile;
 import uz.pdp.app5management.entity.User;
 import uz.pdp.app5management.entity.enums.RoleName;
 import uz.pdp.app5management.payload.AboutUser;
+import uz.pdp.app5management.payload.ApiResponse;
 import uz.pdp.app5management.repository.TaskRepository;
 import uz.pdp.app5management.repository.TurnstileRepository;
 import uz.pdp.app5management.repository.UserRepository;
@@ -33,9 +34,9 @@ public class UserService {
     public List<User> getAllUsersForDirectorAndManager() {
         User principal = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Role role = (Role) principal.getRoles().toArray()[0];
-        if (role.equals(RoleName.DIRECTOR))
+        if (role.getRoleName().equals(RoleName.DIRECTOR))
             return userRepository.findAll();
-        if (role.equals(RoleName.HR_MANAGER))
+        if (role.getRoleName().equals(RoleName.HR_MANAGER))
             return userRepository.findAllByIdNot(principal.getId());
         return null;
     }
@@ -44,7 +45,7 @@ public class UserService {
 
         User principal = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Role role = (Role) principal.getRoles().toArray()[0];
-        if (!role.equals(RoleName.DIRECTOR) || !role.equals(RoleName.HR_MANAGER))
+        if (!role.getRoleName().equals(RoleName.DIRECTOR) || !role.getRoleName().equals(RoleName.HR_MANAGER))
             return null;
 
         Optional<User> optionalUser = userRepository.findById(id);
@@ -56,5 +57,24 @@ public class UserService {
         List<Turnstile> turnstiles = turnstileRepository.findAllByUser(user);
 
         return new AboutUser(user, tasks, turnstiles);
+    }
+
+    public ApiResponse deleteUser(UUID id) {
+        Optional<User> optionalUser = userRepository.findById(id);
+        if (optionalUser.isPresent()){
+
+            User deletingUser = optionalUser.get();
+            User principal = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            Role principalRole = (Role) principal.getRoles().toArray()[0];
+            Role deletingUserRole = (Role) deletingUser.getRoles().toArray()[0];
+            if (principalRole.getRoleName().equals(RoleName.DIRECTOR) ||
+                    (principalRole.getRoleName().equals(RoleName.HR_MANAGER) && deletingUserRole.getRoleName().equals(RoleName.WORKER))
+            || principalRole.getRoleName().equals(deletingUserRole.getRoleName())) {
+                userRepository.delete(deletingUser);
+                return new ApiResponse("User deleted!", true);
+            }
+        }
+        return new ApiResponse("User not found!", false);
     }
 }
